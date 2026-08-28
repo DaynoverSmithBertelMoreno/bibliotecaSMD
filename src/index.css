@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-crema-50 text-tinta-900 font-cuerpo antialiased;
+  }
+
+  h1, h2, h3 {
+    @apply font-titulo;
+  }
+
+  /* Anillo de foco visible en TODO control interactivo (SPEC CA-36). */
+  :focus-visible {
+    @apply outline-none ring-2 ring-marca-600 ring-offset-2 ring-offset-crema-50 rounded-sm;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .boton-primario {
+    @apply inline-flex items-center justify-center gap-2 rounded-md bg-marca-600 px-4 py-2
+           text-sm font-semibold text-white transition-colors
+           hover:bg-marca-700 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .boton-secundario {
+    @apply inline-flex items-center justify-center gap-2 rounded-md border border-crema-300
+           bg-white px-4 py-2 text-sm font-semibold text-tinta-700 transition-colors
+           hover:bg-crema-100 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .boton-icono {
+    @apply inline-flex h-9 w-9 items-center justify-center rounded-md border border-crema-300
+           bg-crema-100 text-marca-700 transition-colors
+           hover:bg-crema-200 disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .campo {
+    @apply w-full rounded-md border border-crema-300 bg-white px-3 py-2 text-sm
+           text-tinta-900 placeholder:text-tinta-500/60
+           focus:border-marca-500 focus:outline-none focus:ring-2 focus:ring-marca-500/30;
+  }
+
+  .campo-error {
+    @apply border-marca-600 focus:border-marca-600 focus:ring-marca-600/30;
+  }
+
+  .etiqueta {
+    @apply mb-1.5 block text-sm font-semibold text-tinta-700;
+  }
+}

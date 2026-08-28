@@ -1,0 +1,68 @@
+#!/bin/sh
+# Valida el formato: Tipo|IdTarea|YYYYMMDD|Descripción (SPEC docs/COMMITS.md).
+# Instalar con: npm run hooks:install
+
+MSG_FILE="$1"
+# Primera línea no vacía que no sea un comentario.
+SUBJECT=$(grep -v '^#' "$MSG_FILE" | sed '/^[[:space:]]*$/d' | head -n 1)
+
+# Los merges y los fixup/squash no siguen la convención.
+case "$SUBJECT" in
+  "Merge "*|"Revert "*|"fixup!"*|"squash!"*) exit 0 ;;
+esac
+
+TIPOS="Feature|Fix|Hotfix|Refactor|Docs|Test|Perf|Build|CI|Chore"
+
+fallar() {
+  echo ""
+  echo "  ✗ Mensaje de commit rechazado"
+  echo ""
+  echo "    $SUBJECT"
+  echo ""
+  echo "    $1"
+  echo ""
+  echo "  Formato:  Tipo|IdTarea|YYYYMMDD|Descripción en inglés imperativo"
+  echo "  Ejemplo:  Fix|SMD-118|$(date +%Y%m%d)|Return 200 instead of 201 on publish"
+  echo "  Tipos:    $TIPOS"
+  echo ""
+  echo "  Detalle en docs/COMMITS.md"
+  echo ""
+  exit 1
+}
+
+# Exactamente cuatro campos.
+CAMPOS=$(printf '%s' "$SUBJECT" | awk -F'|' '{print NF}')
+[ "$CAMPOS" -eq 4 ] || fallar "Se esperaban 4 campos separados por '|', se encontraron $CAMPOS."
+
+TIPO=$(printf '%s' "$SUBJECT" | cut -d'|' -f1)
+TAREA=$(printf '%s' "$SUBJECT" | cut -d'|' -f2)
+FECHA=$(printf '%s' "$SUBJECT" | cut -d'|' -f3)
+DESC=$(printf '%s' "$SUBJECT" | cut -d'|' -f4)
+
+echo "$TIPO" | grep -qxE "$TIPOS" \
+  || fallar "Tipo '$TIPO' no admitido."
+
+echo "$TAREA" | grep -qxE '[A-Za-z0-9][A-Za-z0-9._-]{0,29}' \
+  || fallar "IdTarea '$TAREA' vacío o con caracteres no permitidos."
+
+echo "$FECHA" | grep -qxE '20[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])' \
+  || fallar "Fecha '$FECHA' no tiene la forma YYYYMMDD."
+
+[ -n "$DESC" ] || fallar "La descripción está vacía."
+
+LARGO=$(printf '%s' "$DESC" | wc -c | tr -d ' ')
+[ "$LARGO" -le 60 ] || fallar "La descripción tiene $LARGO caracteres; el máximo es 60."
+
+case "$DESC" in
+  " "*) fallar "La descripción no debe empezar con espacio tras la barra." ;;
+  *.)   fallar "La descripción no lleva punto final." ;;
+esac
+
+# Heurística de modo imperativo. Solo avisa: no bloquea.
+PRIMERA=$(printf '%s' "$DESC" | awk '{print $1}')
+case "$PRIMERA" in
+  *ed|*ing|Adds|Fixes|Updates|Removes|Creates|Deletes|Changes)
+    echo "  ⚠  '$PRIMERA' no parece imperativo. Usa 'Add', 'Fix', 'Update'…" ;;
+esac
+
+exit 0
