@@ -4,11 +4,18 @@ export type HttpClient = {
   get<T>(path: string, params?: Record<string, unknown>): Promise<T>;
   post<T>(path: string, body?: unknown): Promise<T>;
   patch<T>(path: string, body: unknown): Promise<T>;
+  put<T>(path: string, body?: unknown): Promise<T>;
   del(path: string): Promise<void>;
   upload<T>(path: string, file: File): Promise<T>;
 };
 
-/** Sin cabeceras de autenticación: el sistema no tiene sesiones (SPEC §4). */
+/** Inyecta el token de sesión si está almacenado en localStorage. */
+function getAuthHeaders(): Record<string, string> {
+  const token = localStorage.getItem('smd_token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+/** Sin cabeceras de autenticación cuando no hay sesión (SPEC §4). */
 export function createHttpClient(baseUrl: string): HttpClient {
   async function request<T>(path: string, init: RequestInit): Promise<T> {
     const response = await fetch(`${baseUrl}${path}`, init);
@@ -35,21 +42,27 @@ export function createHttpClient(baseUrl: string): HttpClient {
         if (value !== undefined && value !== null && value !== '') query.set(key, String(value));
       });
       const suffix = query.toString() ? `?${query}` : '';
-      return request(`${path}${suffix}`, { method: 'GET' });
+      return request(`${path}${suffix}`, { method: 'GET', headers: getAuthHeaders() });
     },
     post: (path, body) =>
       request(path, {
         method: 'POST',
-        headers: body === undefined ? undefined : json,
+        headers: { ...getAuthHeaders(), ...(body === undefined ? {} : json) },
         body: body === undefined ? undefined : JSON.stringify(body),
       }),
     patch: (path, body) =>
-      request(path, { method: 'PATCH', headers: json, body: JSON.stringify(body) }),
-    del: (path) => request(path, { method: 'DELETE' }),
+      request(path, { method: 'PATCH', headers: { ...getAuthHeaders(), ...json }, body: JSON.stringify(body) }),
+    put: (path, body) =>
+      request(path, {
+        method: 'PUT',
+        headers: { ...getAuthHeaders(), ...(body === undefined ? {} : json) },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      }),
+    del: (path) => request(path, { method: 'DELETE', headers: getAuthHeaders() }),
     upload: (path, file) => {
       const form = new FormData();
       form.append('file', file);
-      return request(path, { method: 'POST', body: form });
+      return request(path, { method: 'POST', headers: getAuthHeaders(), body: form });
     },
   };
 }
